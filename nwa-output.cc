@@ -38,20 +38,27 @@ namespace  {
         }
 
         bool doFunction(Module & m, Function & f) {
+            if (f.empty()) {
+                return false;
+            }
+
             LLVMContext & context = getGlobalContext();
             IntegerType * int32 = TypeBuilder<types::i<32>, true>::get(context);
             Constant * counter = m.getOrInsertGlobal("zzzzz_" + f.getName().str(), int32);
             ConstantInt * one = ConstantInt::get(int32, 1, true);
 
             BasicBlock & entry = f.getEntryBlock();
-            IRBuilder<> builder(entry.begin());
-            Value * pre = builder.CreateLoad(counter, "");
-            Value * add = builder.CreateAdd(pre, one);
-            (void) builder.CreateStore(add, counter);
+            if (entry.size() > 0) {
+                IRBuilder<> builder(entry.begin());
+                Value * pre = builder.CreateLoad(counter, "");
+                Value * add = builder.CreateAdd(pre, one);
+                (void) builder.CreateStore(add, counter);
+            }
             
             return false;
         }
     };  // end of struct Hello
+
 }  // end of anonymous namespace
 
 char Hello::ID = 0;
