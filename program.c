@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+int this_is_a_global;
+
 void foo() {
 }
 
