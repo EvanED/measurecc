@@ -5,7 +5,9 @@
 #include "llvm/TypeBuilder.h"
 #include "llvm/GlobalVariable.h"
 #include "llvm/Constants.h"
+#include "llvm/Instructions.h"
 #include "llvm/Module.h"
+#include "llvm/IRBuilder.h"
 
 #include <sstream>
 #include <iostream>
@@ -33,7 +35,15 @@ namespace  {
         bool doFunction(Module & m, Function & f) {
             LLVMContext & context = getGlobalContext();
             IntegerType * int32 = TypeBuilder<types::i<32>, true>::get(context);
-            m.getOrInsertGlobal("zzzzz_" + f.getName().str(), int32);
+            Constant * counter = m.getOrInsertGlobal("zzzzz_" + f.getName().str(), int32);
+            ConstantInt * one = ConstantInt::get(int32, 1, true);
+
+            BasicBlock & entry = f.getEntryBlock();
+            IRBuilder<> builder(entry.begin());
+            Value * pre = builder.CreateLoad(counter, "");
+            Value * add = builder.CreateAdd(pre, one);
+            (void) builder.CreateStore(add, counter);
+            
             return false;
         }
     };  // end of struct Hello
