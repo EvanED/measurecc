@@ -1,12 +1,10 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 #include "llvm/Pass.h"
-#include "llvm/Support/DebugLoc.h"
-#include "llvm/DebugInfo.h"
 #include "llvm/Function.h"
-#include "llvm/InstrTypes.h"
-#include "llvm/Instructions.h"
-#include "llvm/Support/raw_ostream.h"
+#include "llvm/TypeBuilder.h"
+#include "llvm/GlobalVariable.h"
+#include "llvm/Constants.h"
 
 #include <sstream>
 #include <iostream>
@@ -21,6 +19,18 @@ namespace  {
 
         static char ID;
         Hello() : FunctionPass(ID) {}
+
+        virtual bool doInitialization(Module &m) {
+            LLVMContext & context = getGlobalContext();
+            IntegerType * int32 = TypeBuilder<types::i<32>, true>::get(context);
+            ConstantInt * zero = ConstantInt::get(int32, 0, true);
+            GlobalVariable * g = new GlobalVariable(int32, // type
+                                                    false, // is constant
+                                                    GlobalValue::InternalLinkage,
+                                                    zero,  // initializer
+                                                    "zzzzz");
+            return false;
+        }
 
         virtual bool runOnFunction(Function &f) {
             return false;
