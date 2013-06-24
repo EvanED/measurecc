@@ -8,6 +8,7 @@
 #include "llvm/Instructions.h"
 #include "llvm/Module.h"
 #include "llvm/IRBuilder.h"
+#include "llvm/Support/CommandLine.h"
 
 #include <sstream>
 #include <iostream>
@@ -17,6 +18,8 @@
 using namespace llvm;
 
 namespace  {
+    cl::opt<std::string> OutputFilename("hello-o", cl::desc("Specify output filename"),
+                                        cl::value_desc("filename"));
 
     struct Hello : public ModulePass {
 
@@ -24,6 +27,8 @@ namespace  {
         Hello() : ModulePass(ID) {}
 
         virtual bool runOnModule(Module &m) {
+            std::cerr << "hello-o: " << OutputFilename << "\n";
+            
             for (Module::iterator func = m.begin();
                  func != m.end(); ++func)
             {
