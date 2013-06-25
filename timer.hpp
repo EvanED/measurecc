@@ -21,10 +21,10 @@ namespace _measurecc {
             , _total_time(0)
             , _depth(0)
             , _name(c)
-        {}
+        {
+        }
 
         ~Timer() {
-            std::cout << "Timer " << _name << ": " << total_time() << "\n";
         }
 
         void start() {

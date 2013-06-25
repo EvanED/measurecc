@@ -107,9 +107,6 @@ namespace  {
                 Instruction * name_holder_address =
                     GetElementPtrInst::CreateInBounds(name_holder, gepi_params, "", ctor_block);
 
-                name_holder_address->print(errs() << "++ ");
-                errs() << "\n";
-                
                 std::vector<Value*> ctor_params(2);
                 ctor_params[0] = timer;
                 ctor_params[1] = name_holder_address;
@@ -258,19 +255,15 @@ namespace  {
                 ss >> command;
                 getline(ss, func);
                 func = func.substr(1);
-                std::cerr << "<" << func << ">: ";
                 if (command == "time") {
-                    std::cerr << "timing";
                     time_funcs.insert(func);
                 }
                 else if (command == "count") {
-                    std::cerr << "counting";
                     count_funcs.insert(func);
                 }
                 else {
                     assert(false && "did not say time or count");
                 }
-                std::cerr << "\n";
             }
         }
 
@@ -291,7 +284,6 @@ namespace  {
 
         bool doFunction(Module & m, Function & f) {
             std::string demangled_name = demangle(f.getName());
-            std::cerr << "+++ Considering <" << demangled_name << "> <" << f.getName().str() << "> \n";
             if (count_funcs.count(demangled_name) == 0
                 && time_funcs.count(demangled_name) == 0)
             {
@@ -301,7 +293,6 @@ namespace  {
                 std::cerr << "Warning: function " << f.getName().str() << " is empty. Cannot instrument.\n";
                 return false;
             }
-            std::cerr << "+++    Processing " << demangle(f.getName()) << "\n";
 
             if (count_funcs.count(demangled_name) > 0) {
                 LLVMContext & context = getGlobalContext();
