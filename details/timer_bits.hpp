@@ -3,7 +3,7 @@
 
 #include <time.h>
 
-namespace timer {
+namespace _measurecc {
     namespace details {
         static const long long NANO = 1000000000;
 
