@@ -1,12 +1,14 @@
 #include "timer.hpp"
 
+_measurecc::Timer t1,t2;
+
 namespace {
-    _measurecc::Timer t;
+
 
     void foo() {
-        t.start();
-        t.stop();
-        t.total_time();
+        t1.start();
+        t1.stop();
+        t1.total_time();
     }
 }
 
