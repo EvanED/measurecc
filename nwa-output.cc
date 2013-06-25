@@ -152,30 +152,12 @@ namespace  {
         virtual bool runOnModule(Module &m) {
             GlobalVariable * ctors = m.getGlobalVariable("llvm.global_ctors", true);
             Constant * init = ctors->getInitializer();
-            errs() << "==== ctors: " << ctors << "\n";
-            errs() << "==== ctors->initializer: " << ctors->getInitializer() << "\n";
-            errs() << "==== num operands: " << init->getNumOperands() << "\n";
-
-            errs() << "==== Linkage: " << ctors->getLinkage() << "\n";
 
             std::vector<Constant*> ctor_list;
             for (User::value_op_iterator op = init->value_op_begin();
                  op != init->value_op_end(); ++op)
             {
                 ctor_list.push_back(cast<Constant>(*op));
-                errs() << "===+    ";
-                op->print(errs());
-                errs() << "\n";
-
-                ConstantStruct * s = cast<ConstantStruct>(*op);
-                errs() << "====        operands: " << s->getNumOperands() << "\n";
-
-                for (User::value_op_iterator field = s->value_op_begin();
-                     field != s->value_op_end(); ++field)
-                {
-                    errs() << "====                is a constant int: " << isa<ConstantInt>(*field) << "\n";
-                    errs() << "====                is a function: " << isa<Function>(*field) << "\n";
-                }
             }
 
             // Make a new entry:
@@ -199,17 +181,14 @@ namespace  {
             ArrayType * global_ctors_type = ArrayType::get(ctor_entry_type, ctor_list.size());
             Constant * new_ctors = ConstantArray::get(global_ctors_type, ctor_list);
 
-            errs() << "Removing!\n";
             ctors->removeFromParent();
             delete ctors;
-            errs() << "Removed!\n";            
             GlobalVariable * new_global_ctors = new GlobalVariable(m,
                                                                    global_ctors_type,
                                                                    false,
                                                                    GlobalValue::AppendingLinkage,
                                                                    new_ctors,
                                                                    "llvm.global_ctors");
-            errs() << "Returning!\n";
             return false;
             
             declare_timer_stuff(m);
