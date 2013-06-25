@@ -51,10 +51,11 @@ namespace  {
         std::set<std::string> count_funcs, time_funcs;
 
         Type * _timer_type;
-        FunctionType * _ty_timer_to_void, * _ty_timer_to_double, * _ty_timer_string_to_void;
+        FunctionType * _ty_timer_to_void, * _ty_timer_to_double, * _ty_timer_string_to_void, * _ty_int_string_to_void;
         Function * _timer_start, * _timer_stop, * _timer_total_time, * _measurecc_ctor, * _measurecc_dtor;
 
         std::map<std::string, Constant*> _timers;
+        std::map<std::string, Constant*> _counters;        
 
         void
         define_xtors(Module & m)
@@ -83,6 +84,7 @@ namespace  {
 
             Constant * timer_ctor = m.getOrInsertFunction("_ZN10_measurecc5TimerC1EPKc", _ty_timer_string_to_void);
             Constant * timer_dtor = m.getOrInsertFunction("_ZN10_measurecc5TimerD1Ev", _ty_timer_to_void);
+            Constant * count_outputter = m.getOrInsertFunction("_ZN10_measurecc14output_counterEiPKc", _ty_int_string_to_void);
 
             for(std::map<std::string, Constant*>::const_iterator timerit = _timers.begin();
                 timerit != _timers.end(); ++timerit)
@@ -116,6 +118,37 @@ namespace  {
 
                 CallInst::Create(timer_ctor, ctor_params, "", ctor_block);
                 CallInst::Create(timer_dtor, dtor_params, "", dtor_block);
+            }
+            for(std::map<std::string, Constant*>::const_iterator counterit = _counters.begin();
+                counterit != _counters.end(); ++counterit)
+            {
+                std::string const & func_name = counterit->first;
+                Constant * counter = counterit->second;
+
+                Constant * init = ConstantDataArray::getString(getGlobalContext(), demangle(func_name));
+                Constant * name_holder = new GlobalVariable(m,
+                                                            init->getType(),
+                                                            false,
+                                                            GlobalValue::InternalLinkage,
+                                                            init,
+                                                            "_measurecc_holder_" + func_name);
+                
+
+                Type * int32 = Type::getInt32Ty(getGlobalContext());
+                Constant * zero = ConstantInt::get(int32, 0, true);
+                std::vector<Value*> gepi_params(2);
+                gepi_params[0] = zero;
+                gepi_params[1] = zero;
+                Instruction * name_holder_address =
+                    GetElementPtrInst::CreateInBounds(name_holder, gepi_params, "", dtor_block);
+
+                Instruction * counter_value = new LoadInst(counter, "", dtor_block);
+
+                std::vector<Value*> params(2);
+                params[0] = counter_value;
+                params[1] = name_holder_address;
+
+                CallInst::Create(count_outputter, params, "", dtor_block);
             }
             ReturnInst::Create(getGlobalContext(), ctor_block);
             ReturnInst::Create(getGlobalContext(), dtor_block);
@@ -220,9 +253,14 @@ namespace  {
             ctor_param[0] = timer_p;
             ctor_param[1] = PointerType::get(Type::getInt8Ty(getGlobalContext()), 0);
 
+            std::vector<Type*> count_outputter_param(2);
+            count_outputter_param[0] = int32;
+            count_outputter_param[1] = PointerType::get(Type::getInt8Ty(getGlobalContext()), 0);
+            
             _ty_timer_to_void = FunctionType::get(void_, timer_param, false);
             _ty_timer_string_to_void = FunctionType::get(void_, ctor_param, false);
             _ty_timer_to_double = FunctionType::get(double_, timer_param, false);
+            _ty_int_string_to_void = FunctionType::get(void_, count_outputter_param, false);
 
             _timer_start = Function::Create(_ty_timer_to_void,
                                             GlobalValue::ExternalLinkage,
@@ -299,6 +337,8 @@ namespace  {
                 IntegerType * int32 = TypeBuilder<types::i<32>, true>::get(context);
                 Constant * counter = declare_counter(m, f);
                 ConstantInt * one = ConstantInt::get(int32, 1, true);
+
+                _counters[f.getName().str()] = counter;
 
                 BasicBlock & entry = f.getEntryBlock();
                 assert(entry.size() > 0);
