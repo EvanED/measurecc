@@ -57,16 +57,16 @@ namespace  {
         void
         add_dtor_call(Module & m, Function * f)
         {
-            GlobalVariable * ctors = m.getGlobalVariable("llvm.global_ctors", true);
-            std::vector<Constant*> ctor_list;
+            GlobalVariable * dtors = m.getGlobalVariable("llvm.global_dtors", true);
+            std::vector<Constant*> dtor_list;
 
-            if (ctors != NULL) {
-                Constant * init = ctors->getInitializer();
+            if (dtors != NULL) {
+                Constant * init = dtors->getInitializer();
 
                 for (User::value_op_iterator op = init->value_op_begin();
                      op != init->value_op_end(); ++op)
                 {
-                    ctor_list.push_back(cast<Constant>(*op));
+                    dtor_list.push_back(cast<Constant>(*op));
                 }
             }
 
@@ -74,33 +74,33 @@ namespace  {
             Type * void_ = Type::getVoidTy(getGlobalContext());
             Type * int32 = Type::getInt32Ty(getGlobalContext());
 
-            std::vector<Type*> ctor_entry_vec(2);
-            ctor_entry_vec[0] = int32;
-            ctor_entry_vec[1] = PointerType::get(FunctionType::get(void_, false), 0);
-            StructType * ctor_entry_type = StructType::get(getGlobalContext(), ctor_entry_vec);
+            std::vector<Type*> dtor_entry_vec(2);
+            dtor_entry_vec[0] = int32;
+            dtor_entry_vec[1] = PointerType::get(FunctionType::get(void_, false), 0);
+            StructType * dtor_entry_type = StructType::get(getGlobalContext(), dtor_entry_vec);
 
             std::vector<Constant*> entry_vec(2);
             entry_vec[0] = ConstantInt::get(int32, 65535, true);
             entry_vec[1] = f;
             assert(entry_vec[1]);
-            Constant * ctor_entry = ConstantStruct::get(ctor_entry_type, entry_vec);
+            Constant * dtor_entry = ConstantStruct::get(dtor_entry_type, entry_vec);
             
-            // Append it to the list, then make that the new global_ctors
-            ctor_list.push_back(ctor_entry);
+            // Append it to the list, then make that the new global_dtors
+            dtor_list.push_back(dtor_entry);
 
-            ArrayType * global_ctors_type = ArrayType::get(ctor_entry_type, ctor_list.size());
-            Constant * new_ctors = ConstantArray::get(global_ctors_type, ctor_list);
+            ArrayType * global_dtors_type = ArrayType::get(dtor_entry_type, dtor_list.size());
+            Constant * new_dtors = ConstantArray::get(global_dtors_type, dtor_list);
 
-            if (ctors != NULL) {
-                ctors->removeFromParent();
-                delete ctors;
+            if (dtors != NULL) {
+                dtors->removeFromParent();
+                delete dtors;
             }
-            GlobalVariable * new_global_ctors = new GlobalVariable(m,
-                                                                   global_ctors_type,
+            GlobalVariable * new_global_dtors = new GlobalVariable(m,
+                                                                   global_dtors_type,
                                                                    false,
                                                                    GlobalValue::AppendingLinkage,
-                                                                   new_ctors,
-                                                                   "llvm.global_ctors");
+                                                                   new_dtors,
+                                                                   "llvm.global_dtors");
         }
         
 
