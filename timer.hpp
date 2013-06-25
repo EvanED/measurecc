@@ -7,6 +7,13 @@
 #include "details/timer_bits.hpp"
 
 namespace _measurecc {
+    inline
+    void
+    output_counter(int count, const char * func)
+    {
+        std::cout << "Counter: " << func << ": " << count << "\n";
+    }
+    
     class Timer {
     public:
         typedef long long int64;
