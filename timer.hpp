@@ -14,11 +14,11 @@ namespace _measurecc {
         int64 _total_time;
         int _depth;
     public:
-        Timer()
+        Timer(); /*
             : _current_start(0)
             , _total_time(0)
             , _depth(0)
-        {}
+        {}*/
 
         void start();/* {
             assert(_current_start == 0 ^ _depth > 0);
