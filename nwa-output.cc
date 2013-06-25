@@ -22,6 +22,43 @@ using namespace llvm;
 
 namespace  {
 
+    void
+    declare_timer(Module & m)
+    {
+        Type * int32 = Type::getInt32Ty(getGlobalContext());
+        Type * int64 = Type::getInt64Ty(getGlobalContext());
+        Type * void_ = Type::getVoidTy(getGlobalContext());
+        Type * double_ = Type::getDoubleTy(getGlobalContext());
+        
+        std::vector<Type*> timer_types(3);
+        timer_types[0] = timer_types[1] = int64;
+        timer_types[2] = int32;
+
+        StructType * timer = StructType::create(timer_types, "class._measurecc::Timer");
+        PointerType * timer_p = PointerType::get(timer, 0);
+
+        std::vector<Type*> timer_param(1);
+        timer_param[0] = timer_p;
+
+        FunctionType * ty_void = FunctionType::get(void_, timer_param, false);
+        FunctionType * ty_double = FunctionType::get(double_, timer_param, false);
+
+        Function * start = Function::Create(ty_void,
+                                            GlobalValue::ExternalLinkage,
+                                            "_ZN10_measurecc5Timer5startEv",
+                                            &m);
+
+        Function * stop = Function::Create(ty_void,
+                                           GlobalValue::ExternalLinkage,
+                                           "_ZN10_measurecc5Timer4stopEv",
+                                            &m);
+
+        Function * get_time = Function::Create(ty_double,
+                                               GlobalValue::ExternalLinkage,
+                                               "_ZNK10_measurecc5Timer10total_timeEv",
+                                               &m);
+    }
+
     std::string
     demangle(std::string const & mangled)
     {
@@ -45,6 +82,7 @@ namespace  {
 
         static char ID;
         Hello() : ModulePass(ID) {
+#if 0
             std::ifstream func_descs(funcsFilename.c_str());
             if (!func_descs.good()) {
                 std::cerr << "Error: could not open " << func_descs << "\n";
@@ -61,9 +99,11 @@ namespace  {
                 std::cerr << "<" << func << ">\n";
                 count_funcs.insert(func);
             }
+#endif
         }
 
         virtual bool runOnModule(Module &m) {
+            declare_timer(m);
             for (Module::iterator func = m.begin();
                  func != m.end(); ++func)
             {
