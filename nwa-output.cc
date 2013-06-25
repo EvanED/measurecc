@@ -9,6 +9,7 @@
 #include "llvm/Module.h"
 #include "llvm/IRBuilder.h"
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include <cxxabi.h>
 
@@ -100,16 +101,19 @@ namespace  {
                 ss >> command;
                 getline(ss, func);
                 func = func.substr(1);
-                std::cerr << "<" << func << ">\n";
+                std::cerr << "<" << func << ">: ";
                 if (command == "time") {
+                    std::cerr << "timing";
                     time_funcs.insert(func);
                 }
                 else if (command == "count") {
+                    std::cerr << "counting";
                     count_funcs.insert(func);
                 }
                 else {
                     assert(false && "did not say time or count");
                 }
+                std::cerr << "\n";
             }
         }
 
@@ -154,6 +158,21 @@ namespace  {
             }
 
             if (time_funcs.count(demangled_name) > 0) {
+                Constant * timer = m.getOrInsertGlobal("_measurecc_timer_" + f.getName().str(), _timer_type);
+                std::vector<Value*> params(1);
+                params[0] = timer;
+
+                BasicBlock & entry = f.getEntryBlock();
+                assert(entry.size() > 0);
+
+                CallInst * call = CallInst::Create(_timer_start, params, "", entry.begin());
+
+                for (Function::iterator bb = f.begin(); bb != f.end(); ++bb) {
+                    TerminatorInst * term = bb->getTerminator();
+                    if (isa<ReturnInst>(term)) {
+                        CallInst * call = CallInst::Create(_timer_stop, params, "", term);
+                    }
+                }
             }
             
             return false;
