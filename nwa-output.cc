@@ -1,3 +1,6 @@
+// @_ZL1x = internal global i32 0, align 4
+
+
 #include <boost/algorithm/string/predicate.hpp>
 
 #include "llvm/Pass.h"
@@ -48,6 +51,20 @@ namespace  {
 
         Type * _timer_type;
         Function * _timer_start, * _timer_stop, * _timer_total_time;
+
+        Constant *
+        declare_counter(Module & m, Function & f)
+        {
+            Type * int32 = Type::getInt32Ty(getGlobalContext());
+            Constant * zero = ConstantInt::get(int32, 0, true);
+            GlobalVariable * g = new GlobalVariable(m,
+                                                    int32,
+                                                    false,
+                                                    GlobalValue::InternalLinkage,
+                                                    zero,
+                                                    "_measurecc_counter_" + f.getName().str());
+            return g;
+        }
 
         void
         declare_timer(Module & m)
@@ -144,7 +161,7 @@ namespace  {
             if (count_funcs.count(demangled_name) > 0) {
                 LLVMContext & context = getGlobalContext();
                 IntegerType * int32 = TypeBuilder<types::i<32>, true>::get(context);
-                Constant * counter = m.getOrInsertGlobal("_measurecc_counter_" + f.getName().str(), int32);
+                Constant * counter = declare_counter(m, f);
                 ConstantInt * one = ConstantInt::get(int32, 1, true);
 
                 BasicBlock & entry = f.getEntryBlock();
