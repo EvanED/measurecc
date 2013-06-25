@@ -55,18 +55,18 @@ namespace  {
         Function * _timer_start, * _timer_stop, * _timer_total_time;
 
         void
-        add_dtor_call(Module & m, Function * f)
+        add_xtor_call(Module & m, Function * f, std::string const & varname)
         {
-            GlobalVariable * dtors = m.getGlobalVariable("llvm.global_dtors", true);
-            std::vector<Constant*> dtor_list;
+            GlobalVariable * xtors = m.getGlobalVariable(varname, true);
+            std::vector<Constant*> xtor_list;
 
-            if (dtors != NULL) {
-                Constant * init = dtors->getInitializer();
+            if (xtors != NULL) {
+                Constant * init = xtors->getInitializer();
 
                 for (User::value_op_iterator op = init->value_op_begin();
                      op != init->value_op_end(); ++op)
                 {
-                    dtor_list.push_back(cast<Constant>(*op));
+                    xtor_list.push_back(cast<Constant>(*op));
                 }
             }
 
@@ -74,33 +74,33 @@ namespace  {
             Type * void_ = Type::getVoidTy(getGlobalContext());
             Type * int32 = Type::getInt32Ty(getGlobalContext());
 
-            std::vector<Type*> dtor_entry_vec(2);
-            dtor_entry_vec[0] = int32;
-            dtor_entry_vec[1] = PointerType::get(FunctionType::get(void_, false), 0);
-            StructType * dtor_entry_type = StructType::get(getGlobalContext(), dtor_entry_vec);
+            std::vector<Type*> xtor_entry_vec(2);
+            xtor_entry_vec[0] = int32;
+            xtor_entry_vec[1] = PointerType::get(FunctionType::get(void_, false), 0);
+            StructType * xtor_entry_type = StructType::get(getGlobalContext(), xtor_entry_vec);
 
             std::vector<Constant*> entry_vec(2);
             entry_vec[0] = ConstantInt::get(int32, 65535, true);
             entry_vec[1] = f;
             assert(entry_vec[1]);
-            Constant * dtor_entry = ConstantStruct::get(dtor_entry_type, entry_vec);
+            Constant * xtor_entry = ConstantStruct::get(xtor_entry_type, entry_vec);
             
-            // Append it to the list, then make that the new global_dtors
-            dtor_list.push_back(dtor_entry);
+            // Append it to the list, then make that the new global_xtors
+            xtor_list.push_back(xtor_entry);
 
-            ArrayType * global_dtors_type = ArrayType::get(dtor_entry_type, dtor_list.size());
-            Constant * new_dtors = ConstantArray::get(global_dtors_type, dtor_list);
+            ArrayType * global_xtors_type = ArrayType::get(xtor_entry_type, xtor_list.size());
+            Constant * new_xtors = ConstantArray::get(global_xtors_type, xtor_list);
 
-            if (dtors != NULL) {
-                dtors->removeFromParent();
-                delete dtors;
+            if (xtors != NULL) {
+                xtors->removeFromParent();
+                delete xtors;
             }
-            GlobalVariable * new_global_dtors = new GlobalVariable(m,
-                                                                   global_dtors_type,
+            GlobalVariable * new_global_xtors = new GlobalVariable(m,
+                                                                   global_xtors_type,
                                                                    false,
                                                                    GlobalValue::AppendingLinkage,
-                                                                   new_dtors,
-                                                                   "llvm.global_dtors");
+                                                                   new_xtors,
+                                                                   varname);
         }
         
 
@@ -200,7 +200,8 @@ namespace  {
         }
 
         virtual bool runOnModule(Module &m) {
-            add_dtor_call(m, m.getFunction("_Z1pv"));
+            add_xtor_call(m, m.getFunction("_Z1pv"), "llvm.global_ctors");
+            add_xtor_call(m, m.getFunction("_Z1pv"), "llvm.global_dtors");
             return false;
             
             declare_timer_stuff(m);
