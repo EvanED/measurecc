@@ -67,7 +67,7 @@ namespace  {
         }
 
         void
-        declare_timer(Module & m)
+        declare_timer_stuff(Module & m)
         {
             Type * int32 = Type::getInt32Ty(getGlobalContext());
             Type * int64 = Type::getInt64Ty(getGlobalContext());
@@ -135,7 +135,7 @@ namespace  {
         }
 
         virtual bool runOnModule(Module &m) {
-            declare_timer(m);
+            declare_timer_stuff(m);
             for (Module::iterator func = m.begin();
                  func != m.end(); ++func)
             {
