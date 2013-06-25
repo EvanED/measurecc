@@ -333,6 +333,7 @@ namespace  {
                 std::cerr << "Warning: function " << f.getName().str() << " is empty. Cannot instrument.\n";
                 return false;
             }
+            std::cerr << "==== Instrumenting " << demangled_name << "\n";
 
             if (count_funcs.count(demangled_name) > 0
                 || count_funcs.count(f.getName().str()) > 0)
