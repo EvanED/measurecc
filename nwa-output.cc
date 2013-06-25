@@ -50,9 +50,63 @@ namespace  {
 
         std::set<std::string> count_funcs, time_funcs;
 
-
         Type * _timer_type;
-        Function * _timer_start, * _timer_stop, * _timer_total_time;
+        FunctionType * _ty_timer_to_void, * _ty_timer_to_double;
+        Function * _timer_start, * _timer_stop, * _timer_total_time, * _measurecc_ctor, * _measurecc_dtor;
+
+        std::map<std::string, Constant*> _timers;
+
+        void
+        define_xtors(Module & m)
+        {
+            errs() << "==== define_xtors 1\n";
+            Type * void_ = Type::getVoidTy(getGlobalContext());
+            FunctionType * fn_type = FunctionType::get(void_, false);
+
+            _measurecc_ctor = Function::Create(fn_type,
+                                               GlobalValue::InternalLinkage,
+                                               "_measurecc_ctor",
+                                               &m);
+            _measurecc_dtor = Function::Create(fn_type,
+                                               GlobalValue::InternalLinkage,
+                                               "_measurecc_dtor",
+                                               &m);
+
+            errs() << "==== define_xtors 2\n";
+
+            assert(_measurecc_ctor->empty());
+            assert(_measurecc_dtor->empty());
+
+            BasicBlock * ctor_block = BasicBlock::Create(getGlobalContext(),
+                                                         "entry",
+                                                         _measurecc_ctor);
+            BasicBlock * dtor_block = BasicBlock::Create(getGlobalContext(),
+                                                         "entry",
+                                                         _measurecc_dtor);
+
+
+            Constant * timer_ctor = m.getOrInsertFunction("_ZN10_measurecc5TimerC1Ev", _ty_timer_to_void);
+            Constant * timer_dtor = m.getOrInsertFunction("_ZN10_measurecc5TimerD1Ev", _ty_timer_to_void);
+
+            errs() << "==== define_xtors 3\n";
+            for(std::map<std::string, Constant*>::const_iterator timerit = _timers.begin();
+                timerit != _timers.end(); ++timerit)
+            {
+                std::string const & func_name = timerit->first;
+                Constant * timer = timerit->second;
+
+                std::vector<Value*> params(1);
+                params[0] = timer;
+
+                errs() << "==== define_xtors 5\n";
+                CallInst::Create(timer_ctor, params, "", ctor_block);
+                errs() << "==== define_xtors 6\n";
+                CallInst::Create(timer_dtor, params, "", dtor_block);
+            }
+            errs() << "==== define_xtors 4\n";
+            ReturnInst::Create(getGlobalContext(), ctor_block);
+            ReturnInst::Create(getGlobalContext(), dtor_block);
+        }
 
         void
         add_xtor_call(Module & m, Function * f, std::string const & varname)
@@ -149,20 +203,20 @@ namespace  {
             std::vector<Type*> timer_param(1);
             timer_param[0] = timer_p;
 
-            FunctionType * ty_void = FunctionType::get(void_, timer_param, false);
-            FunctionType * ty_double = FunctionType::get(double_, timer_param, false);
+            _ty_timer_to_void = FunctionType::get(void_, timer_param, false);
+            _ty_timer_to_double = FunctionType::get(double_, timer_param, false);
 
-            _timer_start = Function::Create(ty_void,
+            _timer_start = Function::Create(_ty_timer_to_void,
                                             GlobalValue::ExternalLinkage,
                                             "_ZN10_measurecc5Timer5startEv",
                                             &m);
 
-            _timer_stop = Function::Create(ty_void,
+            _timer_stop = Function::Create(_ty_timer_to_void,
                                            GlobalValue::ExternalLinkage,
                                            "_ZN10_measurecc5Timer4stopEv",
                                            &m);
 
-            _timer_total_time = Function::Create(ty_double,
+            _timer_total_time = Function::Create(_ty_timer_to_double,
                                                  GlobalValue::ExternalLinkage,
                                                  "_ZNK10_measurecc5Timer10total_timeEv",
                                                  &m);
@@ -200,6 +254,7 @@ namespace  {
         }
 
         virtual bool runOnModule(Module &m) {
+            _timers.clear();
             declare_timer_stuff(m);
             for (Module::iterator func = m.begin();
                  func != m.end(); ++func)
@@ -207,8 +262,9 @@ namespace  {
                 doFunction(m, *func);
             }
 
-            add_xtor_call(m, m.getFunction("_Z1pv"), "llvm.global_ctors");
-            add_xtor_call(m, m.getFunction("_Z1pv"), "llvm.global_dtors");
+            define_xtors(m);
+            add_xtor_call(m, _measurecc_ctor, "llvm.global_ctors");
+            add_xtor_call(m, _measurecc_dtor, "llvm.global_dtors");
             return false;
         }
 
@@ -246,6 +302,8 @@ namespace  {
                 Constant * timer = declare_timer(m, f);
                 std::vector<Value*> params(1);
                 params[0] = timer;
+
+                _timers[demangled_name] = timer;
 
                 BasicBlock & entry = f.getEntryBlock();
                 assert(entry.size() > 0);
