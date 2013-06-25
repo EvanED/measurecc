@@ -58,13 +58,16 @@ namespace  {
         add_dtor_call(Module & m, Function * f)
         {
             GlobalVariable * ctors = m.getGlobalVariable("llvm.global_ctors", true);
-            Constant * init = ctors->getInitializer();
-
             std::vector<Constant*> ctor_list;
-            for (User::value_op_iterator op = init->value_op_begin();
-                 op != init->value_op_end(); ++op)
-            {
-                ctor_list.push_back(cast<Constant>(*op));
+
+            if (ctors != NULL) {
+                Constant * init = ctors->getInitializer();
+
+                for (User::value_op_iterator op = init->value_op_begin();
+                     op != init->value_op_end(); ++op)
+                {
+                    ctor_list.push_back(cast<Constant>(*op));
+                }
             }
 
             // Make a new entry:
@@ -88,8 +91,10 @@ namespace  {
             ArrayType * global_ctors_type = ArrayType::get(ctor_entry_type, ctor_list.size());
             Constant * new_ctors = ConstantArray::get(global_ctors_type, ctor_list);
 
-            ctors->removeFromParent();
-            delete ctors;
+            if (ctors != NULL) {
+                ctors->removeFromParent();
+                delete ctors;
+            }
             GlobalVariable * new_global_ctors = new GlobalVariable(m,
                                                                    global_ctors_type,
                                                                    false,
