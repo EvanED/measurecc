@@ -200,16 +200,15 @@ namespace  {
         }
 
         virtual bool runOnModule(Module &m) {
-            add_xtor_call(m, m.getFunction("_Z1pv"), "llvm.global_ctors");
-            add_xtor_call(m, m.getFunction("_Z1pv"), "llvm.global_dtors");
-            return false;
-            
             declare_timer_stuff(m);
             for (Module::iterator func = m.begin();
                  func != m.end(); ++func)
             {
                 doFunction(m, *func);
             }
+
+            add_xtor_call(m, m.getFunction("_Z1pv"), "llvm.global_ctors");
+            add_xtor_call(m, m.getFunction("_Z1pv"), "llvm.global_dtors");
             return false;
         }
 
