@@ -36,32 +36,32 @@ namespace  {
     }
     
     cl::opt<std::string> funcsFilename("measure-spec",
-				       cl::desc("Specify functions that should be measured"),
-				       cl::value_desc("filename"));
+                                       cl::desc("Specify functions that should be measured"),
+                                       cl::value_desc("filename"));
 
     struct Hello : public ModulePass {
 
-	std::set<std::string> count_funcs;
+        std::set<std::string> count_funcs;
 
         static char ID;
         Hello() : ModulePass(ID) {
-	    std::ifstream func_descs(funcsFilename.c_str());
-	    if (!func_descs.good()) {
-		std::cerr << "Error: could not open " << func_descs << "\n";
-		std::exit(1);
-	    }
-	    std::string line;
-	    while(getline(func_descs, line)) {
-		std::stringstream ss(line);
-		std::string command, func;
-		ss >> command;
-		assert(command == "count");
-		getline(ss, func);
-		func = func.substr(1);
-		std::cerr << "<" << func << ">\n";
-		count_funcs.insert(func);
-	    }
-	}
+            std::ifstream func_descs(funcsFilename.c_str());
+            if (!func_descs.good()) {
+                std::cerr << "Error: could not open " << func_descs << "\n";
+                std::exit(1);
+            }
+            std::string line;
+            while(getline(func_descs, line)) {
+                std::stringstream ss(line);
+                std::string command, func;
+                ss >> command;
+                assert(command == "count");
+                getline(ss, func);
+                func = func.substr(1);
+                std::cerr << "<" << func << ">\n";
+                count_funcs.insert(func);
+            }
+        }
 
         virtual bool runOnModule(Module &m) {
             for (Module::iterator func = m.begin();
@@ -73,13 +73,13 @@ namespace  {
         }
 
         bool doFunction(Module & m, Function & f) {
-	    std::string demangled_name = demangle(f.getName());
+            std::string demangled_name = demangle(f.getName());
             std::cerr << "+++ Considering <" << demangled_name << ">\n";
-	    if (count_funcs.count(demangled_name) == 0) {
-		return false;
-	    }
+            if (count_funcs.count(demangled_name) == 0) {
+                return false;
+            }
             if (f.empty()) {
-		std::cerr << "Warning: function " << f.getName().str() << " is empty. Cannot instrument.\n";
+                std::cerr << "Warning: function " << f.getName().str() << " is empty. Cannot instrument.\n";
                 return false;
             }
             std::cerr << "+++    Processing " << demangle(f.getName()) << "\n";
@@ -90,7 +90,7 @@ namespace  {
             ConstantInt * one = ConstantInt::get(int32, 1, true);
 
             BasicBlock & entry = f.getEntryBlock();
-	    assert(entry.size() > 0);
+            assert(entry.size() > 0);
             if (entry.size() > 0) {
                 IRBuilder<> builder(entry.begin());
                 Value * pre = builder.CreateLoad(counter, "");
