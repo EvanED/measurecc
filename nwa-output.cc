@@ -1,4 +1,5 @@
 // @_ZL1x = internal global i32 0, align 4
+// @t1 = global %"class._measurecc::Timer" zeroinitializer, align 8
 
 
 #include <boost/algorithm/string/predicate.hpp>
@@ -60,9 +61,22 @@ namespace  {
             GlobalVariable * g = new GlobalVariable(m,
                                                     int32,
                                                     false,
-                                                    GlobalValue::InternalLinkage,
+                                                    GlobalValue::ExternalLinkage,
                                                     zero,
                                                     "_measurecc_counter_" + f.getName().str());
+            return g;
+        }
+
+        Constant *
+        declare_timer(Module & m, Function & f)
+        {
+            Constant * zero = ConstantAggregateZero::get(_timer_type);
+            GlobalVariable * g = new GlobalVariable(m,
+                                                    _timer_type,
+                                                    false,
+                                                    GlobalValue::InternalLinkage,
+                                                    zero,
+                                                    "_measurecc_timer_" + f.getName().str());
             return g;
         }
 
@@ -175,7 +189,7 @@ namespace  {
             }
 
             if (time_funcs.count(demangled_name) > 0) {
-                Constant * timer = m.getOrInsertGlobal("_measurecc_timer_" + f.getName().str(), _timer_type);
+                Constant * timer = declare_timer(m, f);
                 std::vector<Value*> params(1);
                 params[0] = timer;
 
