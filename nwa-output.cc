@@ -323,7 +323,9 @@ namespace  {
         bool doFunction(Module & m, Function & f) {
             std::string demangled_name = demangle(f.getName());
             if (count_funcs.count(demangled_name) == 0
-                && time_funcs.count(demangled_name) == 0)
+                && time_funcs.count(demangled_name) == 0
+                && count_funcs.count(f.getName().str()) == 0
+                && time_funcs.count(f.getName().str()) == 0)
             {
                 return false;
             }
@@ -332,7 +334,9 @@ namespace  {
                 return false;
             }
 
-            if (count_funcs.count(demangled_name) > 0) {
+            if (count_funcs.count(demangled_name) > 0
+                || count_funcs.count(f.getName().str()) > 0)
+            {
                 LLVMContext & context = getGlobalContext();
                 IntegerType * int32 = TypeBuilder<types::i<32>, true>::get(context);
                 Constant * counter = declare_counter(m, f);
@@ -350,7 +354,9 @@ namespace  {
                 }
             }
 
-            if (time_funcs.count(demangled_name) > 0) {
+            if (time_funcs.count(demangled_name) > 0
+                || time_funcs.count(f.getName().str()) > 0)
+            {
                 Constant * timer = declare_timer(m, f);
                 std::vector<Value*> params(1);
                 params[0] = timer;
