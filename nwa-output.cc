@@ -35,7 +35,7 @@ namespace  {
         int out;
         char* demangled = abi::__cxa_demangle(mangled.c_str(), NULL, NULL, &out);
         if (!demangled) {
-            return "???";
+            return mangled;
         }
         std::string ret = demangled;
         free(demangled);
@@ -51,7 +51,7 @@ namespace  {
         std::set<std::string> count_funcs, time_funcs;
 
         Type * _timer_type;
-        FunctionType * _ty_timer_to_void, * _ty_timer_to_double;
+        FunctionType * _ty_timer_to_void, * _ty_timer_to_double, * _ty_timer_string_to_void;
         Function * _timer_start, * _timer_stop, * _timer_total_time, * _measurecc_ctor, * _measurecc_dtor;
 
         std::map<std::string, Constant*> _timers;
@@ -59,7 +59,6 @@ namespace  {
         void
         define_xtors(Module & m)
         {
-            errs() << "==== define_xtors 1\n";
             Type * void_ = Type::getVoidTy(getGlobalContext());
             FunctionType * fn_type = FunctionType::get(void_, false);
 
@@ -72,8 +71,6 @@ namespace  {
                                                "_measurecc_dtor",
                                                &m);
 
-            errs() << "==== define_xtors 2\n";
-
             assert(_measurecc_ctor->empty());
             assert(_measurecc_dtor->empty());
 
@@ -84,26 +81,45 @@ namespace  {
                                                          "entry",
                                                          _measurecc_dtor);
 
-
-            Constant * timer_ctor = m.getOrInsertFunction("_ZN10_measurecc5TimerC1Ev", _ty_timer_to_void);
+            Constant * timer_ctor = m.getOrInsertFunction("_ZN10_measurecc5TimerC1EPKc", _ty_timer_string_to_void);
             Constant * timer_dtor = m.getOrInsertFunction("_ZN10_measurecc5TimerD1Ev", _ty_timer_to_void);
 
-            errs() << "==== define_xtors 3\n";
             for(std::map<std::string, Constant*>::const_iterator timerit = _timers.begin();
                 timerit != _timers.end(); ++timerit)
             {
                 std::string const & func_name = timerit->first;
                 Constant * timer = timerit->second;
 
-                std::vector<Value*> params(1);
-                params[0] = timer;
+                Constant * init = ConstantDataArray::getString(getGlobalContext(), demangle(func_name));
+                Constant * name_holder = new GlobalVariable(m,
+                                                            init->getType(),
+                                                            false,
+                                                            GlobalValue::InternalLinkage,
+                                                            init,
+                                                            "_measurecc_holder_" + func_name);
+                
 
-                errs() << "==== define_xtors 5\n";
-                CallInst::Create(timer_ctor, params, "", ctor_block);
-                errs() << "==== define_xtors 6\n";
-                CallInst::Create(timer_dtor, params, "", dtor_block);
+                Type * int32 = Type::getInt32Ty(getGlobalContext());
+                Constant * zero = ConstantInt::get(int32, 0, true);
+                std::vector<Value*> gepi_params(2);
+                gepi_params[0] = zero;
+                gepi_params[1] = zero;
+                Instruction * name_holder_address =
+                    GetElementPtrInst::CreateInBounds(name_holder, gepi_params, "", ctor_block);
+
+                name_holder_address->print(errs() << "++ ");
+                errs() << "\n";
+                
+                std::vector<Value*> ctor_params(2);
+                ctor_params[0] = timer;
+                ctor_params[1] = name_holder_address;
+
+                std::vector<Value*> dtor_params(1);
+                dtor_params[0] = timer;
+
+                CallInst::Create(timer_ctor, ctor_params, "", ctor_block);
+                CallInst::Create(timer_dtor, dtor_params, "", dtor_block);
             }
-            errs() << "==== define_xtors 4\n";
             ReturnInst::Create(getGlobalContext(), ctor_block);
             ReturnInst::Create(getGlobalContext(), dtor_block);
         }
@@ -203,7 +219,12 @@ namespace  {
             std::vector<Type*> timer_param(1);
             timer_param[0] = timer_p;
 
+            std::vector<Type*> ctor_param(2);
+            ctor_param[0] = timer_p;
+            ctor_param[1] = PointerType::get(Type::getInt8Ty(getGlobalContext()), 0);
+
             _ty_timer_to_void = FunctionType::get(void_, timer_param, false);
+            _ty_timer_string_to_void = FunctionType::get(void_, ctor_param, false);
             _ty_timer_to_double = FunctionType::get(double_, timer_param, false);
 
             _timer_start = Function::Create(_ty_timer_to_void,
@@ -270,7 +291,7 @@ namespace  {
 
         bool doFunction(Module & m, Function & f) {
             std::string demangled_name = demangle(f.getName());
-            std::cerr << "+++ Considering <" << demangled_name << ">\n";
+            std::cerr << "+++ Considering <" << demangled_name << "> <" << f.getName().str() << "> \n";
             if (count_funcs.count(demangled_name) == 0
                 && time_funcs.count(demangled_name) == 0)
             {
@@ -303,7 +324,7 @@ namespace  {
                 std::vector<Value*> params(1);
                 params[0] = timer;
 
-                _timers[demangled_name] = timer;
+                _timers[f.getName().str()] = timer;
 
                 BasicBlock & entry = f.getEntryBlock();
                 assert(entry.size() > 0);
