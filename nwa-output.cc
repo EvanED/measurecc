@@ -5,14 +5,14 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 #include "llvm/Pass.h"
-#include "llvm/Function.h"
-#include "llvm/TypeBuilder.h"
-#include "llvm/GlobalVariable.h"
-#include "llvm/Constants.h"
-#include "llvm/Instructions.h"
-#include "llvm/Module.h"
-#include "llvm/IRBuilder.h"
-#include "llvm/User.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/TypeBuilder.h"
+#include "llvm/IR/GlobalVariable.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/User.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 
