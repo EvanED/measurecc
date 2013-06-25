@@ -10,6 +10,8 @@
 #include "llvm/IRBuilder.h"
 #include "llvm/Support/CommandLine.h"
 
+#include <cxxabi.h>
+
 #include <sstream>
 #include <iostream>
 #include <string>
@@ -18,6 +20,20 @@
 using namespace llvm;
 
 namespace  {
+
+    std::string
+    demangle(std::string const & mangled)
+    {
+        int out;
+        char* demangled = abi::__cxa_demangle(mangled.c_str(), NULL, NULL, &out);
+        if (!demangled) {
+            return "???";
+        }
+        std::string ret = demangled;
+        free(demangled);
+        return ret;
+    }
+    
     cl::opt<std::string> OutputFilename("hello-o", cl::desc("Specify output filename"),
                                         cl::value_desc("filename"));
 
@@ -38,6 +54,7 @@ namespace  {
         }
 
         bool doFunction(Module & m, Function & f) {
+            std::cerr << "Processing " << demangle(f.getName()) << "\n";
             if (f.empty()) {
                 return false;
             }
