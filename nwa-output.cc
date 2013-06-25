@@ -35,7 +35,8 @@ namespace  {
         return ret;
     }
     
-    cl::opt<std::string> countFilename("count-funcs", cl::desc("Specify functions that should be counted"),
+    cl::opt<std::string> funcsFilename("measure-spec",
+				       cl::desc("Specify functions that should be measured"),
 				       cl::value_desc("filename"));
 
     struct Hello : public ModulePass {
@@ -44,7 +45,7 @@ namespace  {
 
         static char ID;
         Hello() : ModulePass(ID) {
-	    std::ifstream func_descs(countFilename.c_str());
+	    std::ifstream func_descs(funcsFilename.c_str());
 	    if (!func_descs.good()) {
 		std::cerr << "Error: could not open " << func_descs << "\n";
 		std::exit(1);
@@ -56,7 +57,8 @@ namespace  {
 		ss >> command;
 		assert(command == "count");
 		getline(ss, func);
-		std::cerr << "<" << func.substr(1) << ">\n";
+		func = func.substr(1);
+		std::cerr << "<" << func << ">\n";
 		count_funcs.insert(func);
 	    }
 	}
@@ -71,22 +73,24 @@ namespace  {
         }
 
         bool doFunction(Module & m, Function & f) {
-            std::cerr << "+++ Considering " << demangle(f.getName()) << "\n";
-	    if (count_funcs.count(f.getName()) == 0) {
+	    std::string demangled_name = demangle(f.getName());
+            std::cerr << "+++ Considering <" << demangled_name << ">\n";
+	    if (count_funcs.count(demangled_name) == 0) {
 		return false;
 	    }
             if (f.empty()) {
 		std::cerr << "Warning: function " << f.getName().str() << " is empty. Cannot instrument.\n";
                 return false;
             }
-            std::cerr << "+++ Processing " << demangle(f.getName()) << "\n";
+            std::cerr << "+++    Processing " << demangle(f.getName()) << "\n";
 
             LLVMContext & context = getGlobalContext();
             IntegerType * int32 = TypeBuilder<types::i<32>, true>::get(context);
-            Constant * counter = m.getOrInsertGlobal("zzzzz_" + f.getName().str(), int32);
+            Constant * counter = m.getOrInsertGlobal("_measurecc_counter_" + f.getName().str(), int32);
             ConstantInt * one = ConstantInt::get(int32, 1, true);
 
             BasicBlock & entry = f.getEntryBlock();
+	    assert(entry.size() > 0);
             if (entry.size() > 0) {
                 IRBuilder<> builder(entry.begin());
                 Value * pre = builder.CreateLoad(counter, "");
